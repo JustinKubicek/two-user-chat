@@ -1,62 +1,74 @@
 const socket = io();
-let username="";
-const msgBox=document.getElementById("messages");
-const typingDiv=document.getElementById("typing");
-const input=document.getElementById("msg");
+
+let username = "";
+const box = document.getElementById("messages");
+const input = document.getElementById("msg");
 
 function join(){
-    username=document.getElementById("username").value.trim();
+    username = document.getElementById("username").value.trim();
     if(!username) return alert("Enter name");
 
     socket.emit("join",username);
+
     document.getElementById("loginDiv").style.display="none";
     document.getElementById("chatUI").style.display="block";
 }
 
-function addMessage(html){
-    const div=document.createElement("div");
-    div.className="msg";
-    div.innerHTML=html;
-    msgBox.appendChild(div);
-    msgBox.scrollTop=msgBox.scrollHeight;
+function bubble(m){
+    const me = m.user === username;
+
+    return `
+    <div class="msg ${me?"me":"other"}" id="msg-${m.id}">
+        <div class="bubble">
+            <b>${m.user}</b>: ${m.text}
+            <span class="meta">
+                ${m.time}
+                ${me ? (m.seen ? " ✔✔" : " ✔") : ""}
+            </span>
+        </div>
+    </div>`;
+}
+
+function add(html){
+    box.insertAdjacentHTML("beforeend", html);
+    box.scrollTop = box.scrollHeight;
 }
 
 function send(){
     if(!input.value.trim()) return;
-    socket.emit("chat message",input.value);
+    socket.emit("chat message", input.value);
     input.value="";
-    socket.emit("stopTyping");
 }
 
-input.addEventListener("keypress",e=>{
-    socket.emit("typing");
+input.addEventListener("keypress", e=>{
     if(e.key==="Enter") send();
 });
 
-input.addEventListener("blur",()=>socket.emit("stopTyping"));
-
 document.querySelectorAll(".emoji").forEach(e=>{
-    e.onclick=()=> input.value+=e.textContent;
+    e.onclick=()=> input.value += e.textContent;
 });
 
-socket.on("chat message",data=>{
-    const isMe=data.user===username;
-    addMessage(`
-        <div class="bubble ${isMe?"me":"other"}">
-            <b>${data.user}</b>: ${data.text}
-            <span class="time">${data.time}</span>
-        </div>
-    `);
+socket.on("history", msgs=>{
+    msgs.forEach(m=> add(bubble(m)));
 });
 
-socket.on("system",msg=>{
-    addMessage(`<div class="text-center text-muted small">${msg}</div>`);
+socket.on("chat message", m=>{
+    add(bubble(m));
+
+    if(m.user !== username){
+        setTimeout(()=> socket.emit("seen", m.id), 400);
+    }
 });
 
-socket.on("typing",user=>{
-    typingDiv.textContent=user+" is typing...";
+socket.on("seen", id=>{
+    const el = document.querySelector("#msg-"+id+" .meta");
+    if(el) el.innerHTML = el.innerHTML.replace("✔","✔✔");
 });
 
-socket.on("stopTyping",()=>{
-    typingDiv.textContent="";
+socket.on("system", msg=>{
+    add(`<div class="text-center small text-muted">${msg}</div>`);
 });
+
+function toggleDark(){
+    document.body.classList.toggle("dark");
+}
