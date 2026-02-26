@@ -8,34 +8,43 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
+let messages = [];
+let users = {};
+
 io.on("connection", socket => {
 
     socket.on("join", username => {
-        socket.username = username;
+        users[socket.id] = username;
+        socket.emit("history", messages);
         io.emit("system", username + " joined");
     });
 
-    socket.on("typing", () => {
-        socket.broadcast.emit("typing", socket.username);
+    socket.on("chat message", text => {
+        const msg = {
+            id: Date.now(),
+            user: users[socket.id],
+            text,
+            time: new Date().toLocaleTimeString(),
+            seen:false
+        };
+        messages.push(msg);
+        io.emit("chat message", msg);
     });
 
-    socket.on("stopTyping", () => {
-        socket.broadcast.emit("stopTyping");
-    });
-
-    socket.on("chat message", msg => {
-        io.emit("chat message", {
-            user: socket.username,
-            text: msg,
-            time: new Date().toLocaleTimeString()
+    socket.on("seen", id=>{
+        messages = messages.map(m=>{
+            if(m.id===id) m.seen=true;
+            return m;
         });
+        io.emit("seen",id);
     });
 
     socket.on("disconnect", () => {
-        if(socket.username)
-            io.emit("system", socket.username + " left");
+        const name = users[socket.id];
+        delete users[socket.id];
+        if(name) io.emit("system", name+" left");
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log("Running on " + PORT));
+server.listen(PORT, ()=>console.log("Running on "+PORT));
