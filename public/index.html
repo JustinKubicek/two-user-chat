@@ -1,0 +1,30 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Two User Chat</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container py-5">
+    <div class="card shadow">
+        <div class="card-header text-center fw-bold">
+            Simple Chat
+        </div>
+
+        <div class="card-body">
+            <ul id="messages" class="list-group mb-3" style="height:300px; overflow-y:auto;"></ul>
+
+            <div class="input-group">
+                <input id="messageInput" class="form-control" placeholder="Type message...">
+                <button id="sendBtn" class="btn btn-primary">Send</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
