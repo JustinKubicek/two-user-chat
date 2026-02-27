@@ -7,6 +7,13 @@ body.dark{
     max-width:600px;
 }
 
+.sender{
+    font-size:12px;
+    font-weight:bold;
+    margin-bottom:2px;
+    opacity:.8;
+}
+
 .chat-box{
     height:60vh;
     overflow-y:auto;
