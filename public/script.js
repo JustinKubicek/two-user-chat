@@ -82,7 +82,7 @@ function addMsg(msg){
         </div>
 
         <div class="reactions"></div>
-        <div class="seen"></div>
+        <div class="ticks">${msg.user===user ? "✓" : ""}</div>
     `;
 
     box.appendChild(div);
