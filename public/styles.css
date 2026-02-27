@@ -14,6 +14,16 @@ body.dark{
     opacity:.8;
 }
 
+.ticks{
+    font-size:11px;
+    opacity:.7;
+    margin-top:2px;
+    text-align:right;
+}
+.me .ticks{
+    color:white;
+}
+
 .chat-box{
     height:60vh;
     overflow-y:auto;
