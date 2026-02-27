@@ -1,113 +1,106 @@
-const socket=io();
-let username="";
-const box=messages;
-const input=msg;
+const socket = io();
+let user="";
 
-/* LOGIN */
-async function login(){
-const u=user.value.trim();
-if(!u)return alert("enter name");
-
-const res=await fetch("/login",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u})});
-const data=await res.json();
-if(!data.ok)return;
-
-username=u;
-login.style.display="none";
-chatUI.style.display="block";
-socket.emit("join",username);
+function join(){
+    user=document.getElementById("username").value;
+    if(!user) return;
+    document.getElementById("loginBox").style.display="none";
+    document.getElementById("chatUI").style.display="block";
+    socket.emit("join",user);
 }
 
-/* MESSAGE UI */
-function bubble(m){
-const me=m.user===username;
-
-return `
-<div class="msg ${me?"me":"other"}" id="msg-${m.id}">
-<div class="bubble">
-
-<b>${m.user}</b>: <span class="text">${m.text}</span>
-
-<span class="meta">${m.time}${me?(m.seen?" ✔✔":" ✔"):""}</span>
-
-<div class="reactions" id="react-${m.id}">
-${(m.reactions||[]).map(r=>`<span>${r}</span>`).join("")}
-</div>
-
-<div class="actions">
-<span onclick="react(${m.id},'👍')">👍</span>
-<span onclick="react(${m.id},'❤️')">❤️</span>
-<span onclick="react(${m.id},'😂')">😂</span>
-<span onclick="react(${m.id},'😮')">😮</span>
-<span onclick="react(${m.id},'😢')">😢</span>
-${me?` | <span onclick="editMsg(${m.id})">edit</span>
-| <span onclick="deleteMsg(${m.id})">delete</span>`:""}
-</div>
-
-</div></div>`;
-}
-
-function add(h){
-box.insertAdjacentHTML("beforeend",h);
-box.scrollTop=box.scrollHeight;
-}
-
-/* SEND */
 function send(){
-if(!input.value.trim())return;
-socket.emit("chat message",input.value);
-input.value="";
-socket.emit("stopTyping");
+    let input=document.getElementById("msg");
+    if(!input.value) return;
+
+    socket.emit("chat",{
+        user,
+        text:input.value,
+        time:new Date().toLocaleTimeString()
+    });
+
+    input.value="";
 }
 
-input.addEventListener("input",()=>socket.emit("typing"));
-input.addEventListener("keypress",e=>{if(e.key==="Enter")send();});
-
-/* SOCKET EVENTS */
-socket.on("history",msgs=>msgs.forEach(m=>add(bubble(m))));
-socket.on("chat message",m=>{
-add(bubble(m));
-if(m.user!==username)setTimeout(()=>socket.emit("seen",m.id),400);
+document.getElementById("msg").addEventListener("input",()=>{
+    socket.emit("typing",user);
 });
 
-socket.on("presence",list=>{
-online.textContent="Online: "+list.join(", ");
+socket.on("history", msgs=>{
+    msgs.forEach(addMsg);
 });
 
-socket.on("typing",u=>typing.textContent=u+" typing...");
-socket.on("stopTyping",()=>typing.textContent="");
-
-socket.on("seen",id=>{
-const el=document.querySelector(`#msg-${id} .meta`);
-if(el) el.innerHTML=el.innerHTML.replace("✔","✔✔");
+socket.on("chat", msg=>{
+    addMsg(msg);
 });
 
-socket.on("react",({id,emoji})=>{
-document.getElementById("react-"+id)
-.insertAdjacentHTML("beforeend",`<span>${emoji}</span>`);
+socket.on("edit", msg=>{
+    document.getElementById(msg.id).querySelector(".text").innerText=msg.text;
 });
 
-socket.on("edit",({id,text})=>{
-document.querySelector(`#msg-${id} .text`).textContent=text;
+socket.on("delete", id=>{
+    document.getElementById(id)?.remove();
 });
 
-socket.on("delete",id=>{
-document.getElementById("msg-"+id)?.remove();
+socket.on("react", data=>{
+    const div=document.getElementById(data.id).querySelector(".reactions");
+    div.innerHTML="";
+    for(let e in data.reactions){
+        div.innerHTML+=`<span>${e} ${data.reactions[e].length}</span>`;
+    }
 });
 
-socket.on("system",msg=>add(`<div class="text-center small text-muted">${msg}</div>`));
+socket.on("typing", u=>{
+    document.getElementById("typing").innerText=u+" typing...";
+    setTimeout(()=>document.getElementById("typing").innerText="",1500);
+});
 
-/* ACTIONS */
+socket.on("status", users=>{
+    document.getElementById("status").innerText="Online: "+users.join(", ");
+});
+
+socket.on("seen",()=>{
+    let el=document.querySelector(".seen");
+    if(el) el.innerText="Seen";
+});
+
+function addMsg(msg){
+    let box=document.getElementById("chatBox");
+    let div=document.createElement("div");
+    div.id=msg.id;
+    div.className="msg "+(msg.user===user?"me":"them");
+
+    div.innerHTML=`
+        <div class="text">${msg.text}</div>
+        <div class="time">${msg.time}</div>
+        <div class="actions">
+            ✏️ <span onclick="editMsg(${msg.id})">Edit</span>
+            🗑 <span onclick="delMsg(${msg.id})">Delete</span>
+            😊 <span onclick="react(${msg.id})">React</span>
+        </div>
+        <div class="reactions"></div>
+        <div class="seen"></div>
+    `;
+    box.appendChild(div);
+    box.scrollTop=box.scrollHeight;
+
+    if(msg.user!==user) socket.emit("seen");
+}
+
 function editMsg(id){
-const t=prompt("Edit:");
-if(t) socket.emit("edit",{id,text:t});
-}
-function deleteMsg(id){
-if(confirm("Delete?")) socket.emit("delete",id);
-}
-function react(id,emoji){
-socket.emit("react",{id,emoji});
+    let text=prompt("Edit message");
+    if(text) socket.emit("edit",{id,text});
 }
 
-/* DARK MODE */
-function toggleDark(){document.body.classList.toggle("dark");}
+function delMsg(id){
+    socket.emit("delete",id);
+}
+
+function react(id){
+    let emoji=prompt("Emoji?");
+    if(emoji) socket.emit("react",{id,emoji,user});
+}
+
+function toggleDark(){
+    document.body.classList.toggle("dark");
+}
