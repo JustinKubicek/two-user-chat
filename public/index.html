@@ -15,7 +15,7 @@ body.dark{background:#121212;color:white}
 .msg.me{justify-content:flex-end}
 .msg.other{justify-content:flex-start}
 
-.bubble{padding:10px 14px;border-radius:15px;max-width:75%;position:relative}
+.bubble{padding:10px 14px;border-radius:15px;max-width:75%}
 
 .me .bubble{background:#0d6efd;color:white}
 .other .bubble{background:#e4e6eb}
@@ -24,11 +24,12 @@ body.dark{background:#121212;color:white}
 .meta{font-size:.7em;margin-left:8px}
 .me .meta{color:white}
 
-.actions{font-size:.7em;margin-top:4px;opacity:.7;cursor:pointer}
+.reactions{font-size:18px;margin-top:3px}
+.reactions span{cursor:pointer;margin-right:5px}
 
-.typing{font-size:.8em;color:gray;height:20px}
+.typing{font-size:.8em;color:gray;height:18px}
 
-.emoji{cursor:pointer;font-size:22px;margin:2px}
+.online{font-size:.8em;color:green}
 </style>
 </head>
 
@@ -45,20 +46,14 @@ body.dark{background:#121212;color:white}
 
 <div id="login">
 <input id="user" class="form-control mb-2" placeholder="Username">
-<input id="pass" type="password" class="form-control mb-2" placeholder="Password">
-<button class="btn btn-primary w-100" onclick="login()">Login</button>
+<button class="btn btn-primary w-100" onclick="login()">Join</button>
 </div>
 
 <div id="chatUI" style="display:none">
 
-<div id="messages" class="chat-box mb-2"></div>
+<div id="online" class="online mb-1"></div>
+<div id="messages" class="chat-box mb-1"></div>
 <div id="typing" class="typing"></div>
-
-<div>
-<span class="emoji">😀</span><span class="emoji">😂</span>
-<span class="emoji">😍</span><span class="emoji">👍</span>
-<span class="emoji">🔥</span><span class="emoji">🎉</span>
-</div>
 
 <div class="input-group mt-2">
 <input id="msg" class="form-control">
