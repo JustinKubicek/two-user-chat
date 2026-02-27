@@ -71,16 +71,20 @@ function addMsg(msg){
     div.className="msg "+(msg.user===user?"me":"them");
 
     div.innerHTML=`
+        <div class="sender">${msg.user}</div>
         <div class="text">${msg.text}</div>
         <div class="time">${msg.time}</div>
+
         <div class="actions">
             ✏️ <span onclick="editMsg(${msg.id})">Edit</span>
             🗑 <span onclick="delMsg(${msg.id})">Delete</span>
             😊 <span onclick="react(${msg.id})">React</span>
         </div>
+
         <div class="reactions"></div>
         <div class="seen"></div>
     `;
+
     box.appendChild(div);
     box.scrollTop=box.scrollHeight;
 
