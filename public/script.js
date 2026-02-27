@@ -61,7 +61,7 @@ socket.on("status", users=>{
 
 socket.on("seen",()=>{
     let ticks=document.querySelectorAll(".ticks");
-    ticks.forEach(t=>t.innerText="✓");
+    ticks.forEach(t=>t.innerText="✓✓");
 });
 
 function addMsg(msg){
