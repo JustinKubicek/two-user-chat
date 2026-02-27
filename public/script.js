@@ -60,8 +60,8 @@ socket.on("status", users=>{
 });
 
 socket.on("seen",()=>{
-    let el=document.querySelector(".seen");
-    if(el) el.innerText="Seen";
+    let ticks=document.querySelectorAll(".ticks");
+    ticks.forEach(t=>t.innerText="✓");
 });
 
 function addMsg(msg){
