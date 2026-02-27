@@ -10,13 +10,12 @@ const io = new Server(server);
 app.use(express.static("public"));
 app.use(express.json());
 
-/* ---------- DATABASE ---------- */
+/* DATABASE */
 const db = new Database("chat.db");
 
 db.prepare(`
 CREATE TABLE IF NOT EXISTS users(
-username TEXT PRIMARY KEY,
-password TEXT
+username TEXT PRIMARY KEY
 )`).run();
 
 db.prepare(`
@@ -25,60 +24,53 @@ id INTEGER PRIMARY KEY AUTOINCREMENT,
 user TEXT,
 text TEXT,
 time TEXT,
-seen INTEGER
+seen INTEGER,
+reactions TEXT
 )`).run();
 
-/* ---------- LOGIN API ---------- */
+/* LOGIN (username only) */
 app.post("/login",(req,res)=>{
-    const {username,password} = req.body;
-    if(!username || !password) return res.json({ok:false});
+    const {username}=req.body;
+    if(!username) return res.json({ok:false});
 
-    const user = db.prepare("SELECT * FROM users WHERE username=?").get(username);
+    const exists=db.prepare("SELECT * FROM users WHERE username=?").get(username);
+    if(!exists) db.prepare("INSERT INTO users VALUES(?)").run(username);
 
-    if(!user){
-        db.prepare("INSERT INTO users VALUES (?,?)").run(username,password);
-        return res.json({ok:true});
-    }
-
-    if(user.password===password) return res.json({ok:true});
-    res.json({ok:false});
+    res.json({ok:true});
 });
 
-/* ---------- SOCKET ---------- */
-let onlineUsers={};
+/* ONLINE USERS */
+let online={};
 
-io.on("connection", socket=>{
+io.on("connection",socket=>{
 
-    socket.on("join", username=>{
-        onlineUsers[socket.id]=username;
+    socket.on("join",username=>{
+        online[socket.id]=username;
 
-        const history = db.prepare("SELECT * FROM messages").all();
+        const history=db.prepare("SELECT * FROM messages").all()
+        .map(m=>({...m,reactions: m.reactions?JSON.parse(m.reactions):[]}));
+
         socket.emit("history",history);
-
+        io.emit("presence",Object.values(online));
         io.emit("system",username+" joined");
     });
 
-    socket.on("typing",()=>{
-        socket.broadcast.emit("typing",onlineUsers[socket.id]);
-    });
+    socket.on("typing",()=>socket.broadcast.emit("typing",online[socket.id]));
+    socket.on("stopTyping",()=>socket.broadcast.emit("stopTyping"));
 
-    socket.on("stopTyping",()=>{
-        socket.broadcast.emit("stopTyping");
-    });
-
-    socket.on("chat message", text=>{
-        const user=onlineUsers[socket.id];
+    socket.on("chat message",text=>{
+        const user=online[socket.id];
         const time=new Date().toLocaleTimeString();
 
-        const result=db.prepare(
-            "INSERT INTO messages(user,text,time,seen) VALUES(?,?,?,0)"
+        const r=db.prepare(
+        "INSERT INTO messages(user,text,time,seen,reactions) VALUES(?,?,?,0,'[]')"
         ).run(user,text,time);
 
-        const msg={id:result.lastInsertRowid,user,text,time,seen:0};
+        const msg={id:r.lastInsertRowid,user,text,time,seen:0,reactions:[]};
         io.emit("chat message",msg);
     });
 
-    socket.on("seen", id=>{
+    socket.on("seen",id=>{
         db.prepare("UPDATE messages SET seen=1 WHERE id=?").run(id);
         io.emit("seen",id);
     });
@@ -93,11 +85,22 @@ io.on("connection", socket=>{
         io.emit("delete",id);
     });
 
-    socket.on("disconnect",()=>{
-        const name=onlineUsers[socket.id];
-        delete onlineUsers[socket.id];
-        if(name) io.emit("system",name+" left");
+    socket.on("react",({id,emoji})=>{
+        const msg=db.prepare("SELECT reactions FROM messages WHERE id=?").get(id);
+        let arr=msg.reactions?JSON.parse(msg.reactions):[];
+        arr.push(emoji);
+
+        db.prepare("UPDATE messages SET reactions=? WHERE id=?")
+        .run(JSON.stringify(arr),id);
+
+        io.emit("react",{id,emoji});
     });
+
+    socket.on("disconnect",()=>{
+        delete online[socket.id];
+        io.emit("presence",Object.values(online));
+    });
+
 });
 
 const PORT=process.env.PORT||3000;
